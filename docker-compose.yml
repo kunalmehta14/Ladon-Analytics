@@ -1,0 +1,25 @@
+services:
+  # For Development Purposes
+  timescaledb:
+    image: timescale/timescaledb-ha:pg17
+    restart: always
+    container_name: timescaledb
+    ports:
+      - "5432:5432"
+    env_file:
+      - environment.env
+    volumes:
+      - ./timescaledb/data:/home/postgres/pgdata
+      - ./timescaledb/sqlscripts/syslog.sql:/docker-entrypoint-initdb.d/init.sql
+    privileged: true
+  syslog_processor:
+    restart: always
+    container_name: syslog_processor
+    build:
+      context: ./syslog_processor/dockerBuild
+      dockerfile: Dockerfile
+    volumes:
+      - ./syslog_processor/app:/opt/app
+      - ./logs:/var/log/analysis
+      - ./datapipeline/ml_development/keyword_pipeline/keyword_model:/opt/app/keyword_model
+    privileged: true

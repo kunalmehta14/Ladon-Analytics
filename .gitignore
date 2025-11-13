@@ -1,0 +1,24 @@
+# Python venv folders
+Lib
+Scripts
+Include
+__pycache__/
+pyvenv.cfg
+# env files
+.env
+environment.env
+# devlopment purposes
+archive
+data/
+datapipeline/
+# Ignore Log Files
+logs
+*.logs
+# Testing FIles
+*test*
+*archive*
+# LLMS
+llms
+# Temp Django Project
+threatmatic
+manage.py
