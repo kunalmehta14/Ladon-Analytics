@@ -4,9 +4,10 @@ from datetime import datetime, timedelta
 from log_analyzer.keyword_analyzer import TimestampAnalyzer
 
 class DatabaseHandler:
-    def __init__(self, db_access, log_entry, partition_type='monthly'):
+    def __init__(self, db_access, log_entry=None, log_id=None, partition_type='monthly'):
         self.partition_type = partition_type
         self.log_entry = log_entry
+        self.log_id = log_id
         self.conn = psycopg2.connect(dbname=db_access['dbname'],
                                      user=db_access['user'],
                                      password=db_access['password'],
@@ -15,14 +16,15 @@ class DatabaseHandler:
         self.conn.autocommit = True
         self.cursor = self.conn.cursor()
         self.log_entry_date = datetime.today().date()
-        if 'timestamp' in log_entry:
-            self.timestamp_analyzer = TimestampAnalyzer(ts=log_entry['timestamp'],
-                                                        timestamp_pattern=log_entry['timestamp_pattern_type'])
-            extracted_date = self.timestamp_analyzer.parse_timestamp()
-            self.log_entry_timestamp = log_entry['timestamp']
-            self.log_entry_date = extracted_date
-        else:
-            self.log_entry_timestamp = datetime.today().date()
+        if self.log_entry != None:
+            if 'timestamp' in log_entry:
+                self.timestamp_analyzer = TimestampAnalyzer(ts=log_entry['timestamp'],
+                                                            timestamp_pattern=log_entry['timestamp_pattern_type'])
+                extracted_date = self.timestamp_analyzer.parse_timestamp()
+                self.log_entry_timestamp = log_entry['timestamp']
+                self.log_entry_date = extracted_date
+            else:
+                self.log_entry_timestamp = datetime.today().date()
 
     def connect(self):
         """Establish the database connection."""
@@ -39,6 +41,62 @@ class DatabaseHandler:
             self.conn.close()
         self.conn = None
         self.cursor = None
+
+    def insert_device(self):
+        try:
+            dev_query = """
+            INSERT INTO public.devicelist (devip)
+            VALUES (%s)
+            ON CONFLICT (devip) DO NOTHING;
+            """
+            self.cursor.execute(dev_query, (self.log_entry['host'],))
+            result = self.conn.commit()
+            return result
+        except Exception as e:
+            self.conn.rollback()
+            return e
+
+    def check_log(self):
+        """Check if the log id exist"""
+        try:
+            log_query = " SELECT logid FROM logs WHERE logid = %s; "
+            self.cursor.execute(log_query, (self.log_id,))
+            result = self.cursor.fetchall()
+            return result 
+        except Exception as e:
+            self.conn.rollback()
+            return e
+
+    def insert_log(self):
+        """Insert a log entry into the main table."""
+        try:
+            log_query = """
+            INSERT INTO public.logs (logid, details, devip, logfile, "timestamp")
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (logid, "timestamp") DO NOTHING;
+            """
+            self.cursor.execute(log_query, (self.log_entry['log_id'],
+                                json.dumps(self.log_entry['log_message']),
+                                self.log_entry['host'], 
+                                self.log_entry['log_file'],
+                                self.log_entry_date))
+            self.conn.commit()
+        except Exception as e:
+            self.conn.rollback()
+            return e
+
+        # else:
+        #     self.create_partition()
+        #     self.insert_log()
+
+    def __enter__(self):
+        """Enable usage with 'with' statement."""
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Close connection automatically at the end of 'with' statement."""
+        self.close()
 
     # def partition_name(self):
     #     """Generate partition table name based on date and partition type."""
@@ -93,48 +151,3 @@ class DatabaseHandler:
     #     self.cursor.execute(query, (self.partition_name(),))
     #     self.conn.commit()
     #     return self.cursor.fetchone()[0]
-
-    def insert_device(self):
-        try:
-            dev_query = """
-            INSERT INTO public.devicelist (devip)
-            VALUES (%s)
-            ON CONFLICT (devip) DO NOTHING;
-            """
-            self.cursor.execute(dev_query, (self.log_entry['host'],))
-            result = self.conn.commit()
-            return result
-        except Exception as e:
-            self.conn.rollback()
-            return e
-
-    def insert_log(self):
-        """Insert a log entry into the main table."""
-        try:
-            log_query = """
-            INSERT INTO public.logs (logid, details, devip, logfile, "timestamp")
-            VALUES (%s, %s, %s, %s, %s)
-            ON CONFLICT (logid, "timestamp") DO NOTHING;
-            """
-            self.cursor.execute(log_query, (self.log_entry['log_id'],
-                                json.dumps(self.log_entry['log_message']),
-                                self.log_entry['host'], 
-                                self.log_entry['log_file'],
-                                self.log_entry_date))
-            self.conn.commit()
-        except Exception as e:
-            self.conn.rollback()
-            return e
-
-        # else:
-        #     self.create_partition()
-        #     self.insert_log()
-
-    def __enter__(self):
-        """Enable usage with 'with' statement."""
-        self.connect()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Close connection automatically at the end of 'with' statement."""
-        self.close()

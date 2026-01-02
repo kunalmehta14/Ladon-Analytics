@@ -21,5 +21,4 @@ services:
     volumes:
       - ./syslog_processor/app:/opt/app
       - ./logs:/var/log/analysis
-      - ./datapipeline/ml_development/keyword_pipeline/keyword_model:/opt/app/keyword_model
     privileged: true

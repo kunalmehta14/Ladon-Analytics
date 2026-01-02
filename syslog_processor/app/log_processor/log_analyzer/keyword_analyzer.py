@@ -119,3 +119,48 @@ class KeywordExtractor:
     doc = nlp(self.log)
     if doc:
         return doc._.keywords
+
+class KeywowrdNormalizer:
+  def __init__(self, log: None):
+    self.log = log
+    self.normalize_log
+    
+  def extract_message(self):
+    #pattern = r'"MESSAGE"\s*:\s*"([^"]+)"'
+    patterns = [r'"msg"\s*:\s*"([^"]+)"', r'"MESSAGE"\s*:\s*"([^"]+)"']
+    match = None
+    for pattern in patterns:
+      match = re.search(pattern, self.log)
+    if match:
+        message = match.group(1)
+        return message
+    
+  def normalize_log(self):
+    IP_RE = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b")
+    PORT_RE = re.compile(r"\(\d+\)")
+    NUM_RE = re.compile(r"\b\d+\b")
+    USER = re.compile(r'User\s+([A-Za-z0-9._-]+)')
+    REST_GET_REQ = re.compile(r'\b(GET)\s+(/[^?\s]+)(\?[^ \t]+)?')
+    REST_POST_REQ = re.compile(r'\b(POST)\s+(/[^?\s]+)(\?[^ \t]+)?')
+    REST_REQ = re.compile(r'\b(DELETE|PUT|PATCH)\s+(/[^?\s]+)(\?[^ \t]+)?')
+    TIMESTAMP_ISO = re.compile(r'\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[+-]\d{2}:\d{2}|Z)?')
+    TIMESTAMP_ISO_8601 = re.compile(r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})')
+    TIMESTAMP_SYSLOG = re.compile(r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}')
+    TIMESTAMP_RFC = re.compile(r'(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)?,?\s*\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}\s+\d{2}:\d{2}:\d{2}\s+[+-]\d{4}')
+    TIMESTAMP_UNIX = re.compile(r'\b\d{10}(?:\.\d+)?\b')
+    TIMESTAMP_COMPACT = re.compile(r'\b\d{8}[ T]?\d{6}\b')
+    if self.log != None:
+      self.log = IP_RE.sub("<IP>", self.log)
+      self.log = PORT_RE.sub("(<PORT>)", self.log)
+      self.log = TIMESTAMP_ISO.sub("<TIMESTAMP>", self.log)
+      self.log = TIMESTAMP_ISO_8601.sub("<TIMESTAMP>", self.log)
+      self.log = TIMESTAMP_SYSLOG.sub("<TIMESTAMP>", self.log)
+      self.log = TIMESTAMP_RFC.sub("<TIMESTAMP>", self.log)
+      self.log = TIMESTAMP_UNIX.sub("<TIMESTAMP>", self.log)
+      self.log = TIMESTAMP_COMPACT.sub("<TIMESTAMP>", self.log)
+      self.log = NUM_RE.sub("<NUM>", self.log)
+      self.log = USER.sub("<USER>", self.log)
+      self.log = REST_GET_REQ.sub("<REST_GET_REQ>", self.log)
+      self.log = REST_POST_REQ.sub("<REST_POST_REQ>", self.log)
+      self.log = REST_REQ.sub("<REST_REQ>", self.log)
+      return self.log

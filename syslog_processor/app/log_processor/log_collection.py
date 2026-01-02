@@ -12,24 +12,35 @@ def process_log_files(filename, db_access):
     log_collector = LogCollector(filename)
     log_lines = log_collector.collect_logs()
     for line in log_lines:
-        log_data = LogProcessor(line, filename)
+      log_data = LogProcessor(line, filename)
+      log_id_hash_string = log_data.create_hash_string()
+      database_handler_log_id_check = DatabaseHandler(db_access, 
+                                                        log_id=log_id_hash_string)
+      log_id_result = database_handler_log_id_check.check_log()[0][0]
+      if log_id_result == None:
         if (log_data.extract_data() != None and
             log_data.extract_data() != ''):
             database_handler = DatabaseHandler(db_access, log_data.extract_data())
             database_handler.insert_device()
             database_handler.insert_log()
+            
+      elif log_id_result == log_id_hash_string:
+        pass
   except Exception as e:
     print(f"""Error processing file: {filename}
             Error: {e}""")
     pass
 
 def main(directory, db_access):
+  try:
     files = [os.path.join(directory, f) for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
     max_workers = 16
     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
         results = executor.map(process_log_files, files, [db_access] * len(files))
     for result in results:
         result
+  except Exception as e:
+    print(f"""Error: {e}""")
 
 logsdir = os.getenv("LOGS_DIR")
 db_access = {

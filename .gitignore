@@ -19,6 +19,5 @@ logs
 *archive*
 # LLMS
 llms
-# Temp Django Project
-threatmatic
-manage.py
+# Drawio Metadata Files
+*.drawio.bkp
